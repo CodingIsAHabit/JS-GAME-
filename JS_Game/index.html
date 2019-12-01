@@ -1,0 +1,208 @@
+
+<!--So, here's my Snake game. For the sake of simplicity of reading it, 
+the entire code is in one big file.-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Snek</title>
+  <style>
+  html, body {
+    height: 100%;    /*Put in some CSS here and there to make it look nicer.*/
+    margin: 0;
+  }
+  body {
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    border: 1px solid white;
+  }
+  </style>
+ 
+</head>
+<body>
+<div style="font-family: 'IBM Plex Mono', monospace; text-align: center; color: white; position: absolute; margin-top: -20%; font-size: 4em">Snek :D</div>
+<div style="color: white; position: absolute; text-align: center; margin-top: -15%;  width: 500px; font-family: 'IBM Plex Mono', monospace; font-size: 2em">
+     <h3>
+      Score:<p id="score">4</p>
+      
+    </h3>
+</div>
+<div><canvas width="400" height="400" id="game"></canvas></div>
+<script>
+
+ //THIS IS WHERE THE JS STARTS.
+
+var audio = document.createElement("AUDIO")
+document.body.appendChild(audio);
+audio.src = "themesong.mp3"
+
+document.body.addEventListener("mousemove", function () {
+    audio.play()
+})
+
+
+
+var canvas = document.getElementById('game');
+var context = canvas.getContext('2d');
+var grid = 16;
+var count = 0;
+var score = 5;
+
+
+  
+var snake = {
+  x: 160,
+  y: 160,
+  
+  //Snake velocity. moves one grid length every frame in either the x or y direction
+  dx: grid,
+  dy: 0,
+  
+  //Keep track of all grids the snake body occupies
+  cells: [],
+  
+  //Length of the snake grows when eating an apple
+  maxCells: 4
+};
+var apple = {
+  x: 320,
+  y: 320
+};
+
+//Get random whole numbers in a specific range
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+// game loop
+function loop() {
+  requestAnimationFrame(loop);
+  //Slow game loop to 15 fps instead of 60, 
+  //60 fps is a bit too much I felt (60/15 = 4)
+  if (++count < 4) {
+    return;
+  }
+  count = 0;
+  context.clearRect(0,0,canvas.width,canvas.height);
+  //Move snake by it's velocity
+  snake.x += snake.dx;
+  snake.y += snake.dy;
+  //Wrap snake position horizontally on edge of screen
+  if (snake.x < 0) {
+    snake.x = canvas.width - grid;
+  }
+  else if (snake.x >= canvas.width) {
+    snake.x = 0;
+  }
+  
+  //Wrap snake position vertically on edge of screen
+  if (snake.y < 0) {
+    snake.y = canvas.height - grid;
+  }
+  else if (snake.y >= canvas.height) {
+    snake.y = 0;
+  }
+  //Keep track of where snake has been. front of the array is always the head, this is part of the movement logic
+  snake.cells.unshift({x: snake.x, y: snake.y});
+  //Remove cells as we move away from them
+  if (snake.cells.length > snake.maxCells) {
+    snake.cells.pop();
+  }
+  //Draw apple
+  context.fillStyle = 'red';
+  context.fillRect(apple.x, apple.y, grid-1, grid-1);
+
+  //Draw snake one cell at a time, so it doesn't all load at once
+  context.fillStyle = 'green';
+  snake.cells.forEach(function(cell, index) {
+    
+    //Drawing 1 px smaller than the grid creates a grid effect in the snake body so you can see how long it is,
+    //basically just divides it into segments (cubes, that is)
+    context.fillRect(cell.x, cell.y, grid-1, grid-1); 
+
+
+
+    //Snake ate apple
+    if (cell.x === apple.x && cell.y === apple.y) { //Extends the snake by 1 when an apple is eaten
+      snake.maxCells++;
+
+      var snd = new Audio("eat.wav"); //SFX, buffers automatically when created
+      snd.play();
+
+      //Canvas is 400x400 which is 25x25 grids 
+      //This draws the apples on a random position on the grid
+      apple.x = getRandomInt(0, 25) * grid;
+      apple.y = getRandomInt(0, 25) * grid;
+
+      document.getElementById("score").innerHTML = score++;
+
+    }
+    //Check for collision with all cells after this one
+    for (var i = index + 1; i < snake.cells.length; i++) {
+      
+      //If the snake occupies same space as a body part, then reset the game
+           
+      if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+        snake.x = 160;
+        snake.y = 160;
+        snake.cells = [];
+        snake.maxCells = 4;
+        snake.dx = grid;
+        snake.dy = 0;
+        apple.x = getRandomInt(0, 25) * grid;
+        apple.y = getRandomInt(0, 25) * grid;
+        score = 4;
+        document.getElementById("score").innerHTML = 4;
+            var snd = new Audio("eat3.wav"); //SFX, buffers automatically when created
+            snd.play();
+      }
+    }
+  });
+}
+//Listen to keyboard events to move the snake
+document.addEventListener('keydown', function(e) {
+  // prevent snake from backtracking on itself by checking that it's 
+  // not already moving on the same axis (pressing left while moving
+  // left won't do anything, and pressing right while moving left
+  // shouldn't let you collide with your own body)
+  
+  // left arrow key
+  if (e.which === 37 && snake.dx === 0) {
+    snake.dx = -grid;
+    snake.dy = 0;
+
+  }
+  // up arrow key
+  else if (e.which === 38 && snake.dy === 0) {
+    snake.dy = -grid;
+    snake.dx = 0;
+  }
+  // right arrow key
+  else if (e.which === 39 && snake.dx === 0) {
+    snake.dx = grid;
+    snake.dy = 0;
+  }
+  // down arrow key
+  else if (e.which === 40 && snake.dy === 0) {
+    snake.dy = grid;
+    snake.dx = 0;
+  }
+});
+
+//This calls the function, and starts the game
+requestAnimationFrame(loop);
+         
+
+
+//AND THIS IS WHERE THE JS ENDS.
+
+</script>
+
+<!--ADD MUSIC, ADD SFX (FOR EATING AN APPLE, SPAWNING, DEATH), ADD SPINNING SCOREBOARD-->
+
+
+</body>
+</html>
